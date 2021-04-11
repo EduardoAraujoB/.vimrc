@@ -5,12 +5,12 @@ Plug 'SirVer/ultisnips' | Plug 'honza/vim-snippets'
 
 " Javascript/Typescript/JSX Syntax
 Plug 'pangloss/vim-javascript'
-Plug 'leafgarland/typescript-vim'
-Plug 'maxmellon/vim-jsx-pretty'
-Plug 'peitalin/vim-jsx-typescript'
 Plug 'styled-components/vim-styled-components'
-Plug 'herringtondarkholme/yats.vim'
+Plug 'maxmellon/vim-jsx-pretty'
 Plug 'glanotte/vim-jasmine'
+Plug 'leafgarland/typescript-vim'
+Plug 'peitalin/vim-jsx-typescript'
+Plug 'herringtondarkholme/yats.vim'
 
 " LSP and code formatters
 Plug 'neoclide/coc.nvim' , { 'branch' : 'release' }
@@ -50,6 +50,9 @@ Plug 'vim-test/vim-test'
 
 " Ident on paste
 Plug 'sickill/vim-pasta'
+
+" Comment lines
+Plug 'preservim/nerdcommenter'
 
 call plug#end()
 
@@ -109,6 +112,12 @@ let g:NERDTreeGitStatusIndicatorMapCustom = {
                 \ 'Unknown'   :'?',
                 \ }
 
+" Create default mappings
+let g:NERDCreateDefaultMappings = 1
+
+" Add spaces after comment delimiters by default
+let g:NERDSpaceDelims = 1
+
 " these "Ctrl mappings" work well when Caps Lock is mapped to Ctrl
 nmap <silent> t<C-n> :TestNearest<CR>
 nmap <silent> t<C-f> :TestFile<CR>
@@ -119,8 +128,11 @@ nmap <silent> <C-a> ggVG<CR>
 nmap <silent> <C-X> dd<CR>
 nnoremap <silent> <C-f> :Files<CR>
 nnoremap <silent> <expr> <C-f> (expand('%') =~ 'NERD_tree' ? "\<c-w>\<c-w>" : '').":FZF\<cr>"
+vmap <C-/> <plug>NERDCommenterToggle <CR>
 nmap <silent> <A-Up> :m-2  <CR>
 nmap <silent> <A-Down> :m+  <CR>
+vnoremap <A-down> :m '>+1<CR>gv=gv
+vnoremap <A-up> :m '<-2<CR>gv=gv
 " Remap keys for applying codeAction to the current line.
 nmap <leader>ac  <Plug>(coc-codeaction)
 " Apply AutoFix to problem on the current line.
@@ -139,11 +151,11 @@ autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTr
 
 packadd! dracula
 syntax enable
+filetype plugin on
 filetype plugin indent on
 colorscheme dracula
 hi Normal ctermbg=none
 set number
-filetype plugin indent on
 set tabstop=2
 set shiftwidth=2
 set autoindent
