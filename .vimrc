@@ -125,10 +125,12 @@ nmap <silent> t<C-s> :TestSuite<CR>
 nmap <silent> t<C-l> :TestLast<CR>
 nmap <silent> t<C-g> :TestVisit<CR>
 nmap <silent> <C-a> ggVG<CR>
-nmap <silent> <C-X> dd<CR>
 nnoremap <silent> <C-f> :Files<CR>
 nnoremap <silent> <expr> <C-f> (expand('%') =~ 'NERD_tree' ? "\<c-w>\<c-w>" : '').":FZF\<cr>"
 vmap <C-/> <plug>NERDCommenterToggle <CR>
+nnoremap <silent><C-x> m`:silent +g/\m^\s*$/d<CR>``:noh<CR>
+nnoremap <silent><C-S-down> :set paste<CR>m`o<Esc>``:set nopaste<CR>
+nnoremap <silent><C-S-up> :set paste<CR>m`O<Esc>``:set nopaste<CR>
 nmap <silent> <A-Up> :m-2  <CR>
 nmap <silent> <A-Down> :m+  <CR>
 vnoremap <A-down> :m '>+1<CR>gv=gv
@@ -142,6 +144,7 @@ nmap <silent> gd <Plug>(coc-definition)
 nmap <silent> gy <Plug>(coc-type-definition)
 nmap <silent> gi <Plug>(coc-implementation)
 nmap <silent> gr <Plug>(coc-references)
+nnoremap <C-b> :NERDTreeToggle <CR>
 " Start NERDTree. If a file is specified, move the cursor to its window.
 autocmd StdinReadPre * let s:std_in=1
 autocmd VimEnter * NERDTree | if argc() > 0 || exists("s:std_in") | wincmd p | endif
