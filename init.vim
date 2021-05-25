@@ -3,6 +3,9 @@ call plug#begin('~/.config/nvim/plugged')
 " Utils and snippets
 Plug 'SirVer/ultisnips' | Plug 'honza/vim-snippets'
 
+" Smooth Scroll
+Plug 'karb94/neoscroll.nvim'
+
 " Fancy syntax
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 
@@ -16,6 +19,10 @@ Plug 'jordwalke/vim-reasonml'
 
 " Error Handling
 Plug 'scrooloose/syntastic'
+
+" Tabs
+Plug 'kyazdani42/nvim-web-devicons'
+" Plug 'romgrk/barbar.nvim'
 
 " Code completion
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
@@ -31,8 +38,9 @@ Plug 'jparise/vim-graphql'
 Plug 'mileszs/ack.vim'
 
 " File search
-Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
-Plug 'junegunn/fzf.vim'
+Plug 'nvim-lua/popup.nvim'
+Plug 'nvim-lua/plenary.nvim'
+Plug 'nvim-telescope/telescope.nvim'
 
 " Cute tree
 Plug 'preservim/nerdtree' |
@@ -66,11 +74,15 @@ Plug 'preservim/nerdcommenter'
 
 " Color Schemes
 Plug 'dracula/vim', { 'as': 'dracula' }
+Plug 'ghifarit53/tokyonight-vim'
+Plug 'romgrk/doom-one.vim'
 
 call plug#end()
 
 lua require'nvim-treesitter.configs'.setup { highlight = { enable = true } }
 set encoding=UTF-8
+
+" lua require('neoscroll').setup({ mappings = {'<S-Up>', '<S-Down>', '<C-b>', '<C-f>', '<C-y>', '<C-e>', 'zt', 'zz', 'zb'}, hide_cursor = true, stop_eof = true,respect_scrolloff = false, cursor_scrolls_alone = true })
 
 autocmd BufReadPost,BufNewFile
  \ *.test.tsx,*.test.ts,*spec.ts,*spec.tsx,*.test.jsx,*.test.js,*spec.js,*spec.jsx,
@@ -144,6 +156,16 @@ let g:airline_skip_empty_sections = 1
 
 autocmd FileType reason map <buffer> <D-C> :ReasonPrettyPrint<Cr>
 
+" Run coc only in some files
+augroup CocGroup
+  autocmd!
+  autocmd BufNew,BufRead * execute "CocDisable"
+  autocmd BufNew,BufEnter *.ts execute "silent! CocEnable"
+  autocmd BufNew,BufEnter *.tsx execute "silent! CocEnable"
+  autocmd BufNew,BufEnter *.js execute "silent! CocEnable"
+	autocmd BufNew,BufEnter *.jsx execute "silent! CocEnable"
+augroup end
+
 " these "Ctrl mappings" work well when Caps Lock is mapped to Ctrl
 nmap <silent> t<C-n> :TestNearest<CR>
 nmap <silent> t<C-f> :TestFile<CR>
@@ -153,8 +175,7 @@ nmap <silent> t<C-g> :TestVisit<CR>
 " setup mapping to call :LazyGit
 nnoremap <silent> <C-g> :LazyGit<CR>
 nmap <silent> <C-a> ggVG<CR>
-nnoremap <silent> <C-f> :Files<CR>
-nnoremap <silent> <expr> <C-f> (expand('%') =~ 'NERD_tree' ? "\<c-w>\<c-w>" : '').":FZF\<cr>"
+nnoremap <silent> <C-f> :Telescope find_files<CR>
 vmap <C-/> <plug>NERDCommenterToggle <CR>
 nnoremap <silent><C-x> m`:silent +g/\m^\s*$/d<CR>``:noh<CR>
 nnoremap <silent><C-S-down> :set paste<CR>m`o<Esc>``:set nopaste<CR>
@@ -185,7 +206,15 @@ syntax enable
 filetype plugin on
 filetype plugin indent on
 colorscheme dracula
-hi Normal ctermbg=none
+set termguicolors
+
+"let g:tokyonight_style = 'storm' " available: night, storm
+"let g:tokyonight_enable_italic = 1
+
+"colorscheme tokyonight
+highlight Normal guibg=none
+hi BufferTabpageFill guibg=none
+
 set number
 set tabstop=2
 set shiftwidth=2
