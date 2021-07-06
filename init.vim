@@ -12,7 +12,7 @@ Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 " Javascript/Typescript/JSX Syntax
 Plug 'styled-components/vim-styled-components'
 Plug 'maxmellon/vim-jsx-pretty'
-Plug 'herringtondarkholme/yats.vim'
+
 
 " ReasonML Syntax
 Plug 'jordwalke/vim-reasonml'
@@ -28,10 +28,11 @@ Plug 'kyazdani42/nvim-web-devicons'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
 
 " LSP and code formatters
-Plug 'neoclide/coc.nvim' , { 'branch' : 'release' }
-Plug 'dense-analysis/ale'
+" Plug 'neoclide/coc.nvim' , { 'branch' : 'release' }
+" Plug 'dense-analysis/ale'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'nvim-lua/lsp-status.nvim'
+Plug 'neovim/nvim-lspconfig'
 
 " GraphQL
 Plug 'jparise/vim-graphql'
@@ -51,8 +52,8 @@ Plug 'preservim/nerdtree' |
 Plug 'rust-lang/rust.vim'
 Plug 'prabirshrestha/async.vim'
 Plug 'prabirshrestha/vim-lsp'
-Plug 'prabirshrestha/asyncomplete.vim'
-Plug 'prabirshrestha/asyncomplete-lsp.vim'
+"Plug 'prabirshrestha/asyncomplete.vim'
+"Plug 'prabirshrestha/asyncomplete-lsp.vim'
 
 " git
 Plug 'tpope/vim-fugitive'
@@ -74,12 +75,131 @@ Plug 'preservim/nerdcommenter'
 
 " Color Schemes
 Plug 'dracula/vim', { 'as': 'dracula' }
-Plug 'ghifarit53/tokyonight-vim'
+Plug 'folke/tokyonight.nvim'
 Plug 'romgrk/doom-one.vim'
 
 call plug#end()
 
-lua require'nvim-treesitter.configs'.setup { highlight = { enable = true } }
+lua << EOF
+local lspconfig = require"lspconfig"
+
+vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
+  underline = true,
+  signs = true,
+  virtual_text = false,
+})
+
+vim.fn.sign_define('LspDiagnosticsSignError', { text = "" })
+vim.fn.sign_define('LspDiagnosticsSignWarning', { text = "" })
+vim.fn.sign_define('LspDiagnosticsSignInformation', { text = "" })
+vim.fn.sign_define('LspDiagnosticsSignHint', { text = "" })
+
+local function eslint_config_exists()
+  local eslintrc = vim.fn.glob(".eslintrc*", 0, 1)
+  
+  if not vim.tbl_isempty(eslintrc) then
+    return true
+  end
+
+  if vim.fn.filereadable("package.json") then
+    if vim.fn.json_decode(vim.fn.readfile("package.json"))["eslintConfig"] then
+      return true
+    end
+  end
+
+  return false 
+end
+
+
+local eslint = {
+  lintCommand = "eslint_d -f unix --stdin --stdin-filename ${INPUT}",
+  lintStdin = true,
+  lintFormats = {"%f:%l:%c: %m"},
+  lintIgnoreExitCode = true,
+  formatCommand = "eslint_d --fix-to-stdout --stdin --stdin-filename=${INPUT}",
+  formatStdin = true
+}
+
+local prettier = {
+  formatCommand = (
+    function()
+      if not vim.fn.empty(vim.fn.glob(vim.loop.cwd() .. '/.prettierrc')) then
+        return "prettier --config ./.prettierrc"
+      else
+        return "prettier --config ~/.config/nvim/.prettierrc"
+      end
+    end
+  )()
+}
+
+lspconfig.tsserver.setup {
+  filetypes = { "typescript", "typescriptreact", "typescript.tsx", "javascript", "javascriptreact", "javascript.jsx" },
+  root_dir = function() return vim.loop.cwd() end,
+  on_attach = function(client)
+    if client.config.flags then
+      client.config.flags.allow_incremental_sync = true
+    end
+    client.resolved_capabilities.document_formatting = false
+    if not client == nil then
+      set_lsp_config(client)
+    end
+    vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
+  end
+}
+
+lspconfig.efm.setup {
+  on_attach = function(client)
+    client.resolved_capabilities.document_formatting = true
+    client.resolved_capabilities.goto_definition = false
+    if not client == nil then
+      set_lsp_config(client)
+    end
+  vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
+  end,
+  root_dir = function() return vim.loop.cwd() end,
+  settings = {
+    languages = {
+      javascript = {eslint, prettier},
+      javascriptreact = {eslint, prettier},
+      ["javascript.jsx"] = {eslint, prettier},
+      typescript = {eslint, prettier},
+      ["typescript.tsx"] = {eslint, prettier},
+      typescriptreact = {eslint, prettier},
+    }
+  },
+  filetypes = {
+    "javascript",
+    "javascriptreact",
+    "javascript.jsx",
+    "typescript",
+    "typescript.tsx",
+    "typescriptreact",
+  },
+}
+EOF
+
+" Errors in Red
+hi LspDiagnosticsVirtualTextError guifg=Red ctermfg=Red
+" Warnings in Yellow
+hi LspDiagnosticsVirtualTextWarning guifg=Yellow ctermfg=Yellow
+" Info and Hints in White
+hi LspDiagnosticsVirtualTextInformation guifg=White ctermfg=White
+hi LspDiagnosticsVirtualTextHint guifg=White ctermfg=White
+
+" Underline the offending code
+hi LspDiagnosticsUnderlineError guifg=NONE ctermfg=NONE cterm=underline gui=underline
+hi LspDiagnosticsUnderlineWarning guifg=NONE ctermfg=NONE cterm=underline gui=underline
+hi LspDiagnosticsUnderlineInformation guifg=NONE ctermfg=NONE cterm=underline gui=underline
+hi LspDiagnosticsUnderlineHint guifg=NONE ctermfg=NONE cterm=underline gui=underline
+
+lua << EOF
+require'nvim-treesitter.configs'.setup {
+  ensure_installed = "maintained", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
+  highlight = {
+    enable = true,              -- false will disable the whole extension
+  },
+}
+EOF
 set encoding=UTF-8
 
 " lua require('neoscroll').setup({ mappings = {'<S-Up>', '<S-Down>', '<C-b>', '<C-f>', '<C-y>', '<C-e>', 'zt', 'zz', 'zb'}, hide_cursor = true, stop_eof = true,respect_scrolloff = false, cursor_scrolls_alone = true })
@@ -87,29 +207,6 @@ set encoding=UTF-8
 autocmd BufReadPost,BufNewFile
  \ *.test.tsx,*.test.ts,*spec.ts,*spec.tsx,*.test.jsx,*.test.js,*spec.js,*spec.jsx,
  \ set filetype=jasmine.javascript syntax=jasmine
-
-let g:ale_fixers = {
- \ '*': ['remove_trailing_lines', 'trim_whitespace'],
- \ 'javascript': ['prettier', 'eslint'],
- \ 'typescript': ['prettier', 'eslint'] ,
- \ 'javascriptreact': ['prettier', 'eslint'],
- \ 'typescriptreact': ['prettier', 'eslint'],
- \ 'json': ['prettier']
- \ }
-
-let g:ale_linters = {}
-let g:ale_linters.typescript = ['eslint', 'tsserver']
-let g:ale_linters.typescriptreact = ['eslint', 'tsserver']
-let g:ale_linters.javascript = ['eslint', 'tsserver']
-let g:ale_linters.javascriptreact = ['eslint', 'tsserver']
-
-let g:ale_typescript_prettier_use_local_config = 2
-
-let g:ale_fix_on_save = 2
-
-let g:ale_linters_explicit = 2
-
-let g:coc_global_extensions = [ 'coc-tsserver', 'coc-rls' ]
 
 let g:rustfmt_autosave = 1
 
@@ -156,16 +253,6 @@ let g:airline_skip_empty_sections = 1
 
 autocmd FileType reason map <buffer> <D-C> :ReasonPrettyPrint<Cr>
 
-" Run coc only in some files
-augroup CocGroup
-  autocmd!
-  autocmd BufNew,BufRead * execute "CocDisable"
-  autocmd BufNew,BufEnter *.ts execute "silent! CocEnable"
-  autocmd BufNew,BufEnter *.tsx execute "silent! CocEnable"
-  autocmd BufNew,BufEnter *.js execute "silent! CocEnable"
-	autocmd BufNew,BufEnter *.jsx execute "silent! CocEnable"
-augroup end
-
 " these "Ctrl mappings" work well when Caps Lock is mapped to Ctrl
 nmap <silent> t<C-n> :TestNearest<CR>
 nmap <silent> t<C-f> :TestFile<CR>
@@ -176,6 +263,7 @@ nmap <silent> t<C-g> :TestVisit<CR>
 nnoremap <silent> <C-g> :LazyGit<CR>
 nmap <silent> <C-a> ggVG<CR>
 nnoremap <silent> <C-f> :Telescope find_files<CR>
+nnoremap <silent> <C-A-f> :Telescope live_grep<CR>
 vmap <C-/> <plug>NERDCommenterToggle <CR>
 nnoremap <silent><C-x> m`:silent +g/\m^\s*$/d<CR>``:noh<CR>
 nnoremap <silent><C-S-down> :set paste<CR>m`o<Esc>``:set nopaste<CR>
@@ -184,15 +272,7 @@ nmap <silent> <A-Up> :m-2  <CR>
 nmap <silent> <A-Down> :m+  <CR>
 vnoremap <A-down> :m '>+1<CR>gv=gv
 vnoremap <A-up> :m '<-2<CR>gv=gv
-" Remap keys for applying codeAction to the current line.
-nmap <leader>ac  <Plug>(coc-codeaction)
-" Apply AutoFix to problem on the current line.
-nmap <leader>qf  <Plug>(coc-fix-current)
-" GoTo code navigation.
-nmap silent> gd <Plug>(coc-definition)
-nmap <silent> gy <Plug>(coc-type-definition)
-nmap <silent> gi <Plug>(coc-implementation)
-nmap <silent> gr <Plug>(coc-references)
+
 nnoremap <C-b> :NERDTreeToggle <CR>
 " Start NERDTree. If a file is specified, move the cursor to its window.
 autocmd StdinReadPre * let s:std_in=1
@@ -201,15 +281,14 @@ autocmd VimEnter * NERDTree | if argc() > 0 || exists("s:std_in") | wincmd p | e
 autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() |
     \ quit | endif
 
-"packadd! dracula
 syntax enable
 filetype plugin on
 filetype plugin indent on
 colorscheme dracula
 set termguicolors
 
-"let g:tokyonight_style = 'storm' " available: night, storm
-"let g:tokyonight_enable_italic = 1
+let g:tokyonight_style = 'storm' " available: night, storm
+let g:tokyonight_enable_italic = 1
 
 "colorscheme tokyonight
 highlight Normal guibg=none
@@ -219,3 +298,5 @@ set number
 set tabstop=2
 set shiftwidth=2
 set autoindent
+set expandtab
+set updatetime=500
