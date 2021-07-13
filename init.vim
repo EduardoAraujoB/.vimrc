@@ -13,7 +13,6 @@ Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 Plug 'styled-components/vim-styled-components'
 Plug 'maxmellon/vim-jsx-pretty'
 
-
 " ReasonML Syntax
 Plug 'jordwalke/vim-reasonml'
 
@@ -25,11 +24,10 @@ Plug 'kyazdani42/nvim-web-devicons'
 " Plug 'romgrk/barbar.nvim'
 
 " Code completion
-Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+Plug 'hrsh7th/nvim-compe'
+Plug 'onsails/lspkind-nvim'
 
 " LSP and code formatters
-" Plug 'neoclide/coc.nvim' , { 'branch' : 'release' }
-" Plug 'dense-analysis/ale'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'nvim-lua/lsp-status.nvim'
 Plug 'neovim/nvim-lspconfig'
@@ -52,8 +50,6 @@ Plug 'preservim/nerdtree' |
 Plug 'rust-lang/rust.vim'
 Plug 'prabirshrestha/async.vim'
 Plug 'prabirshrestha/vim-lsp'
-"Plug 'prabirshrestha/asyncomplete.vim'
-"Plug 'prabirshrestha/asyncomplete-lsp.vim'
 
 " git
 Plug 'tpope/vim-fugitive'
@@ -82,6 +78,77 @@ call plug#end()
 
 lua << EOF
 local lspconfig = require"lspconfig"
+
+vim.o.completeopt = "menuone,noselect"
+
+require"lspkind".init({
+    -- enables text annotations
+    --
+    -- default: true
+    with_text = true,
+
+    -- default symbol map
+    -- can be either 'default' or
+    -- 'codicons' for codicon preset (requires vscode-codicons font installed)
+    --
+    -- default: 'default'
+    preset = 'codicons',
+
+    -- override preset symbols
+    --
+    -- default: {}
+    symbol_map = {
+      Text = '',
+      Method = 'ƒ',
+      Function = '',
+      Constructor = '',
+      Variable = '',
+      Class = '',
+      Interface = 'ﰮ',
+      Module = '',
+      Property = '',
+      Unit = '',
+      Value = '',
+      Enum = '了',
+      Keyword = '',
+      Snippet = '﬌',
+      Color = '',
+      File = '',
+      Folder = '',
+      EnumMember = '',
+      Constant = '',
+      Struct = ''
+    },
+})
+
+
+require'compe'.setup {
+  enabled = true;
+  autocomplete = true;
+  debug = false;
+  min_length = 1;
+  preselect = 'enable';
+  throttle_time = 80;
+  source_timeout = 200;
+  incomplete_delay = 400;
+  max_abbr_width = 100;
+  max_kind_width = 100;
+  max_menu_width = 100;
+  documentation = false;
+
+  source = {
+    path = true;
+    buffer = true;
+    calc = true;
+    vsnip = true;
+    nvim_lsp = true;
+    nvim_lua = true;
+    spell = true;
+    tags = true;
+    snippets_nvim = true;
+    treesitter = true;
+  };
+}
 
 vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
   underline = true,
@@ -121,15 +188,11 @@ local eslint = {
 }
 
 local prettier = {
-  formatCommand = (
-    function()
-      if not vim.fn.empty(vim.fn.glob(vim.loop.cwd() .. '/.prettierrc')) then
-        return "prettier --config ./.prettierrc"
-      else
-        return "prettier --config ~/.config/nvim/.prettierrc"
-      end
-    end
-  )()
+  formatCommand = 'prettierd "${INPUT}"',
+  formatStdin = true,
+  env = {
+    string.format('PRETTIERD_DEFAULT_CONFIG=%s', vim.fn.expand('/.prettierrc')),
+  },
 }
 
 lspconfig.tsserver.setup {
@@ -148,16 +211,23 @@ lspconfig.tsserver.setup {
 }
 
 lspconfig.efm.setup {
+  cmd = {"efm-langserver"},
+  init_options = {documentFormatting = true},
   on_attach = function(client)
     client.resolved_capabilities.document_formatting = true
     client.resolved_capabilities.goto_definition = false
+    
     if not client == nil then
       set_lsp_config(client)
     end
-  vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
+
+    vim.cmd [[autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_sync()]]
+    
+    vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
   end,
   root_dir = function() return vim.loop.cwd() end,
   settings = {
+    rootMarkers = {vim.loop.cwd()},
     languages = {
       javascript = {eslint, prettier},
       javascriptreact = {eslint, prettier},
@@ -252,6 +322,18 @@ let g:airline_powerline_fonts = 1
 let g:airline_skip_empty_sections = 1
 
 autocmd FileType reason map <buffer> <D-C> :ReasonPrettyPrint<Cr>
+
+" " Copy to clipboard
+vnoremap  <leader>y  "+y
+nnoremap  <leader>Y  "+yg_
+nnoremap  <leader>y  "+y
+nnoremap  <leader>yy  "+yy
+
+" " Paste from clipboard
+nnoremap <leader>p "+p
+nnoremap <leader>P "+P
+vnoremap <leader>p "+p
+vnoremap <leader>P "+P
 
 " these "Ctrl mappings" work well when Caps Lock is mapped to Ctrl
 nmap <silent> t<C-n> :TestNearest<CR>
