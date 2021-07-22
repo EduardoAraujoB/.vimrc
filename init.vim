@@ -188,11 +188,8 @@ local eslint = {
 }
 
 local prettier = {
-  formatCommand = 'prettierd "${INPUT}"',
-  formatStdin = true,
-  env = {
-    string.format('PRETTIERD_DEFAULT_CONFIG=%s', vim.fn.expand('/.prettierrc')),
-  },
+  formatCommand = "prettierd --stdin-filepath ${INPUT}",
+  formatStdin = true
 }
 
 lspconfig.tsserver.setup {
@@ -220,7 +217,6 @@ lspconfig.efm.setup {
     if not client == nil then
       set_lsp_config(client)
     end
-
     vim.cmd [[autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_sync()]]
     
     vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
@@ -246,6 +242,7 @@ lspconfig.efm.setup {
     "typescriptreact",
   },
 }
+
 EOF
 
 " Errors in Red
@@ -366,13 +363,9 @@ autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTr
 syntax enable
 filetype plugin on
 filetype plugin indent on
-colorscheme dracula
+colorscheme dracula 
 set termguicolors
 
-let g:tokyonight_style = 'storm' " available: night, storm
-let g:tokyonight_enable_italic = 1
-
-"colorscheme tokyonight
 highlight Normal guibg=none
 hi BufferTabpageFill guibg=none
 
