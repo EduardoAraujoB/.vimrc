@@ -42,14 +42,11 @@ Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
 
 " Cute tree
-Plug 'preservim/nerdtree' |
-            \ Plug 'Xuyuanp/nerdtree-git-plugin' |
-            \ Plug 'ryanoasis/vim-devicons'
+Plug 'kyazdani42/nvim-tree.lua'
 
 " Rust
 Plug 'rust-lang/rust.vim'
 Plug 'prabirshrestha/async.vim'
-Plug 'prabirshrestha/vim-lsp'
 
 " git
 Plug 'tpope/vim-fugitive'
@@ -192,6 +189,10 @@ local prettier = {
   formatStdin = true
 }
 
+local terraform = {
+  formatCommand = "terraform fmt -write=false -list=false ${INPUT}",
+}
+
 lspconfig.tsserver.setup {
   filetypes = { "typescript", "typescriptreact", "typescript.tsx", "javascript", "javascriptreact", "javascript.jsx" },
   root_dir = function() return vim.loop.cwd() end,
@@ -217,8 +218,7 @@ lspconfig.efm.setup {
     if not client == nil then
       set_lsp_config(client)
     end
-    vim.cmd [[autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_sync()]]
-    
+    vim.cmd [[autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_seq_sync()]]
     vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
   end,
   root_dir = function() return vim.loop.cwd() end,
@@ -231,6 +231,7 @@ lspconfig.efm.setup {
       typescript = {eslint, prettier},
       ["typescript.tsx"] = {eslint, prettier},
       typescriptreact = {eslint, prettier},
+      terraform = {terraform},
     }
   },
   filetypes = {
@@ -240,8 +241,12 @@ lspconfig.efm.setup {
     "typescript",
     "typescript.tsx",
     "typescriptreact",
+    "terraform",
+    "terraform.tf",
   },
 }
+
+lspconfig.terraformls.setup {}
 
 EOF
 
@@ -271,10 +276,6 @@ set encoding=UTF-8
 
 " lua require('neoscroll').setup({ mappings = {'<S-Up>', '<S-Down>', '<C-b>', '<C-f>', '<C-y>', '<C-e>', 'zt', 'zz', 'zb'}, hide_cursor = true, stop_eof = true,respect_scrolloff = false, cursor_scrolls_alone = true })
 
-autocmd BufReadPost,BufNewFile
- \ *.test.tsx,*.test.ts,*spec.ts,*spec.tsx,*.test.jsx,*.test.js,*spec.js,*spec.jsx,
- \ set filetype=jasmine.javascript syntax=jasmine
-
 let g:rustfmt_autosave = 1
 
 let g:syntastic_aggregate_errors = 1
@@ -289,36 +290,42 @@ if executable('rls')
         \ })
 endif
 
-let g:NERDTreeGitStatusIndicatorMapCustom = {
-                \ 'Modified'  :'✹',
-                \ 'Staged'    :'✚',
-                \ 'Untracked' :'✭',
-                \ 'Renamed'   :'➜',
-                \ 'Unmerged'  :'═',
-                \ 'Deleted'   :'✖',
-                \ 'Dirty'     :'✗',
-                \ 'Ignored'   :'☒',
-                \ 'Clean'     :'✔︎',
-                \ 'Unknown'   :'?',
-                \ }
-
-" Create default mappings
-let g:NERDCreateDefaultMappings = 1
-
-" Add spaces after comment delimiters by default
-let g:NERDSpaceDelims = 1
-
-" Airline: Enable the airline extensions for esy project status and reason
-" syntastic plugin.
-let g:airline_extensions = ['esy', 'reason']
-let g:reasonml_project_airline=1
-let g:reasonml_syntastic_airline=1
-let g:reasonml_clean_project_airline=1
-let g:airline#extensions#whitespace#enabled = 0
-let g:airline_powerline_fonts = 1
-let g:airline_skip_empty_sections = 1
-
-autocmd FileType reason map <buffer> <D-C> :ReasonPrettyPrint<Cr>
+" Nvim Tree
+let g:nvim_tree_auto_open = 1 "0 by default, opens the tree when typing `vim $DIR` or `vim`
+let g:nvim_tree_ignore = [ '.git', 'node_modules', '.cache' ] "empty by default
+let g:nvim_tree_gitignore = 1 "0 by default
+let g:nvim_tree_auto_open = 1 "0 by default, opens the tree when typing `vim $DIR` or `vim`
+let g:nvim_tree_auto_close = 1 "0 by default, closes the tree when it's the last window
+let g:nvim_tree_highlight_opened_files = 1
+let g:nvim_tree_icons = {
+    \ 'default': '',
+    \ 'symlink': '',
+    \ 'git': {
+    \   'unstaged': "✗",
+    \   'staged': "✓",
+    \   'unmerged': "",
+    \   'renamed': "➜",
+    \   'untracked': "★",
+    \   'deleted': "",
+    \   'ignored': "◌"
+    \   },
+    \ 'folder': {
+    \   'arrow_open': "",
+    \   'arrow_closed': "",
+    \   'default': "",
+    \   'open': "",
+    \   'empty': "",
+    \   'empty_open': "",
+    \   'symlink': "",
+    \   'symlink_open': "",
+    \   },
+    \   'lsp': {
+    \     'hint': "",
+    \     'info': "",
+    \     'warning': "",
+    \     'error': "",
+    \   }
+    \ }
 
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
@@ -331,6 +338,9 @@ nnoremap <leader>p "+p
 nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
+
+" Vim Tree
+nnoremap <C-b> :NvimTreeToggle<CR>
 
 " these "Ctrl mappings" work well when Caps Lock is mapped to Ctrl
 nmap <silent> t<C-n> :TestNearest<CR>
@@ -352,14 +362,6 @@ nmap <silent> <A-Down> :m+  <CR>
 vnoremap <A-down> :m '>+1<CR>gv=gv
 vnoremap <A-up> :m '<-2<CR>gv=gv
 
-nnoremap <C-b> :NERDTreeToggle <CR>
-" Start NERDTree. If a file is specified, move the cursor to its window.
-autocmd StdinReadPre * let s:std_in=1
-autocmd VimEnter * NERDTree | if argc() > 0 || exists("s:std_in") | wincmd p | endif
-" Exit Vim if NERDTree is the only window left.
-autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() |
-    \ quit | endif
-
 syntax enable
 filetype plugin on
 filetype plugin indent on
@@ -374,4 +376,4 @@ set tabstop=2
 set shiftwidth=2
 set autoindent
 set expandtab
-set updatetime=500
+set updatetime=1000
