@@ -53,9 +53,8 @@ Plug 'tpope/vim-fugitive'
 Plug 'airblade/vim-gitgutter'
 Plug 'kdheepak/lazygit.nvim'
 
-" Airline because YES
-Plug 'vim-airline/vim-airline'
-Plug 'vim-airline/vim-airline-themes'
+" Pretty and fast status line
+Plug 'glepnir/galaxyline.nvim' , {'branch': 'main'}
 
 " Testing
 Plug 'vim-test/vim-test'
@@ -72,6 +71,260 @@ Plug 'folke/tokyonight.nvim'
 Plug 'romgrk/doom-one.vim'
 
 call plug#end()
+
+lua << EOF
+local present1, gl = pcall(require, "galaxyline")
+local present2, condition = pcall(require, "galaxyline.condition")
+if not (present1 or present2) then
+   return
+end
+
+local gls = gl.section
+
+gl.short_line_list = { " " }
+
+local left_separator = "" -- or " "
+local right_separator = "" -- or "" " "
+
+local colors = {
+  dark_gray = '#282a36',
+  light_gray = '#44475a',
+  blue_gray = '#6272a4',
+  cyan = '#8be9fd',
+  green = '#50fa7b',
+  pink = '#ff79c6',
+  purple = '#bd93f9',
+  white = '#f8f8f2',
+  orange = '#ffb86c',
+  red = '#ff5555',
+  yellow = '#f1fa8c',
+}
+
+gls.left[1] = {
+   FirstElement = {
+      provider = function()
+         return "▋"
+      end,
+      highlight = { colors.green, colors.green },
+   },
+}
+
+gls.left[2] = {
+   statusIcon = {
+      provider = function()
+         return "  "
+      end,
+      highlight = { colors.dark_gray, colors.green },
+      separator = right_separator .. " ",
+      separator_highlight = { colors.green, colors.blue_gray },
+   },
+}
+
+gls.left[3] = {
+   FileIcon = {
+      provider = "FileIcon",
+      condition = condition.buffer_not_empty,
+      highlight = { colors.white, colors.blue_gray },
+   },
+}
+
+gls.left[4] = {
+   FileName = {
+      provider = function()
+         local fileinfo = require "galaxyline.provider_fileinfo"
+         return fileinfo.get_current_file_name("", "")
+      end,
+      condition = condition.buffer_not_empty,
+      highlight = { colors.white, colors.blue_gray },
+      separator = right_separator, 
+      separator_highlight = { colors.blue_gray, colors.cyan },
+   },
+}
+
+gls.left[5] = {
+   current_dir = {
+      provider = function()
+         local dir_name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+         return "  " .. dir_name .. " "
+      end,
+      highlight = { colors.dark_gray, colors.cyan },
+      separator = right_separator,
+      separator_highlight = { colors.cyan, colors.light_gray },
+   },
+}
+
+local checkwidth = function()
+   local squeeze_width = vim.fn.winwidth(0) / 2
+   if squeeze_width > 30 then
+      return true
+   end
+   return false
+end
+
+gls.left[6] = {
+   DiffAdd = {
+      provider = "DiffAdd",
+      condition = checkwidth,
+      icon = "  ",
+      highlight = { colors.white, colors.light_gray },
+   },
+}
+
+gls.left[7] = {
+   DiffModified = {
+      provider = "DiffModified",
+      condition = checkwidth,
+      icon = "   ",
+      highlight = { colors.blue_gray, colors.light_gray },
+   },
+}
+
+gls.left[8] = {
+   DiffRemove = {
+      provider = "DiffRemove",
+      condition = checkwidth,
+      icon = "  ",
+      highlight = { colors.blue_gray, colors.light_gray },
+   },
+}
+
+gls.left[9] = {
+   DiagnosticError = {
+      provider = "DiagnosticError",
+      icon = "  ",
+      highlight = { colors.red, colors.light_gray },
+   },
+}
+
+gls.left[10] = {
+   DiagnosticWarn = {
+      provider = "DiagnosticWarn",
+      icon = "  ",
+      highlight = { colors.yellow, colors.light_gray },
+   },
+}
+
+gls.right[1] = {
+   lsp_status = {
+      provider = function()
+         local clients = vim.lsp.get_active_clients()
+         if next(clients) ~= nil then
+            local buf_ft = vim.api.nvim_buf_get_option(0, "filetype")
+            for _, client in ipairs(clients) do
+               local filetypes = client.config.filetypes
+               if filetypes and vim.fn.index(filetypes, buf_ft) ~= -1 then
+                  return " " .. "  " .. " LSP"
+               end
+            end
+            return ""
+         else
+            return ""
+         end
+      end,
+      highlight = { colors.blue_gray, colors.light_gray },
+   },
+}
+
+gls.right[2] = {
+   GitIcon = {
+      provider = function()
+         return " "
+      end,
+      condition = require("galaxyline.condition").check_git_workspace,
+      highlight = { colors.blue_gray, colors.light_gray },
+      separator = " ",
+      separator_highlight = { colors.light_gray, colors.light_gray },
+   },
+}
+
+gls.right[3] = {
+   GitBranch = {
+      provider = "GitBranch",
+      condition = require("galaxyline.condition").check_git_workspace,
+      highlight = { colors.blue_gray, colors.light_gray },
+   },
+}
+
+local mode_colors = {
+   [110] = { "NORMAL", colors.red },
+   [105] = { "INSERT", colors.purple },
+   [99] = { "COMMAND", colors.pink },
+   [116] = { "TERMINAL", colors.green },
+   [118] = { "VISUAL", colors.cyan },
+   [22] = { "V-BLOCK", colors.cyan },
+   [86] = { "V_LINE", colors.cyan },
+   [82] = { "REPLACE", colors.orange },
+   [115] = { "SELECT", colors.blue },
+   [83] = { "S-LINE", colors.blue },
+}
+
+local mode = function(n)
+   return mode_colors[vim.fn.mode():byte()][n]
+end
+
+gls.right[4] = {
+   left_round = {
+      provider = function()
+         vim.cmd("hi Galaxyleft_round guifg=" .. mode(2))
+         return left_separator
+      end,
+      separator = " ",
+      separator_highlight = { colors.light_gray, colors.light_gray },
+      highlight = { "GalaxyViMode", colors.light_gray },
+   },
+}
+
+gls.right[5] = {
+   viMode_icon = {
+      provider = function()
+         vim.cmd("hi GalaxyviMode_icon guibg=" .. mode(2))
+         return " "
+      end,
+      highlight = { colors.light_gray, colors.red },
+   },
+}
+
+gls.right[6] = {
+   ViMode = {
+      provider = function()
+         vim.cmd("hi GalaxyViMode guifg=" .. mode(2))
+         return "  " .. mode(1) .. " "
+      end,
+      highlight = { "GalaxyViMode", colors.light_gray },
+   },
+}
+
+gls.right[7] = {
+   some_RoundIcon = {
+      provider = function()
+         return " "
+      end,
+      separator = left_separator,
+      separator_highlight = { colors.green, colors.light_gray },
+      highlight = { colors.light_gray, colors.green },
+   },
+}
+
+gls.right[8] = {
+   line_percentage = {
+      provider = function()
+         local current_line = vim.fn.line "."
+         local total_line = vim.fn.line "$"
+
+         if current_line == 1 then
+            return "  Top "
+         elseif current_line == vim.fn.line "$" then
+            return "  Bot "
+         end
+         local result, _ = math.modf((current_line / total_line) * 100)
+         return "  " .. result .. "% "
+      end,
+      highlight = { colors.green, colors.light_gray },
+   },
+}
+
+EOF
+
 
 lua << EOF
 local lspconfig = require"lspconfig"
@@ -273,8 +526,6 @@ require'nvim-treesitter.configs'.setup {
 }
 EOF
 set encoding=UTF-8
-
-" lua require('neoscroll').setup({ mappings = {'<S-Up>', '<S-Down>', '<C-b>', '<C-f>', '<C-y>', '<C-e>', 'zt', 'zz', 'zb'}, hide_cursor = true, stop_eof = true,respect_scrolloff = false, cursor_scrolls_alone = true })
 
 let g:rustfmt_autosave = 1
 
