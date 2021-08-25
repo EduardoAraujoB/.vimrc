@@ -32,10 +32,6 @@ Plug 'editorconfig/editorconfig-vim'
 Plug 'nvim-lua/lsp-status.nvim'
 Plug 'neovim/nvim-lspconfig'
 
-" GraphQL
-Plug 'jparise/vim-graphql'
-Plug 'mileszs/ack.vim'
-
 " File search
 Plug 'nvim-lua/popup.nvim'
 Plug 'nvim-lua/plenary.nvim'
@@ -56,14 +52,8 @@ Plug 'kdheepak/lazygit.nvim'
 " Pretty and fast status line
 Plug 'glepnir/galaxyline.nvim' , {'branch': 'main'}
 
-" Testing
-Plug 'vim-test/vim-test'
-
-" Ident on paste
-Plug 'sickill/vim-pasta'
-
 " Comment lines
-Plug 'preservim/nerdcommenter'
+Plug 'terrortylor/nvim-comment'
 
 " Color Schemes
 Plug 'dracula/vim', { 'as': 'dracula' }
@@ -71,6 +61,17 @@ Plug 'folke/tokyonight.nvim'
 Plug 'romgrk/doom-one.vim'
 
 call plug#end()
+
+" TODO: move those lua scripts into separeted files
+lua << EOF
+
+require('nvim_comment').setup({
+  comment_empty = false,
+  line_mapping = '<C-l>',
+  operator_mapping = '<C-k>',
+})
+
+EOF
 
 lua << EOF
 local present1, gl = pcall(require, "galaxyline")
@@ -166,7 +167,7 @@ gls.left[6] = {
       provider = "DiffAdd",
       condition = checkwidth,
       icon = "  ",
-      highlight = { colors.white, colors.light_gray },
+      highlight = { colors.green, colors.light_gray },
    },
 }
 
@@ -175,7 +176,7 @@ gls.left[7] = {
       provider = "DiffModified",
       condition = checkwidth,
       icon = "   ",
-      highlight = { colors.blue_gray, colors.light_gray },
+      highlight = { colors.orange, colors.light_gray },
    },
 }
 
