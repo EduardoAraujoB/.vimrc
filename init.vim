@@ -1,7 +1,8 @@
 call plug#begin('~/.config/nvim/plugged')
 
 " Utils and snippets
-Plug 'SirVer/ultisnips' | Plug 'honza/vim-snippets'
+" Plug 'SirVer/ultisnips'
+" Plug 'mlaursen/vim-react-snippets'
 
 " Smooth Scroll
 Plug 'karb94/neoscroll.nvim'
@@ -11,7 +12,6 @@ Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 
 " Javascript/Typescript/JSX Syntax
 Plug 'styled-components/vim-styled-components'
-Plug 'maxmellon/vim-jsx-pretty'
 
 " ReasonML Syntax
 Plug 'jordwalke/vim-reasonml'
@@ -19,8 +19,10 @@ Plug 'jordwalke/vim-reasonml'
 " Error Handling
 Plug 'scrooloose/syntastic'
 
-" Tabs
+" Icons
 Plug 'kyazdani42/nvim-web-devicons'
+
+" Tabs
 " Plug 'romgrk/barbar.nvim'
 
 " Code completion
@@ -31,6 +33,7 @@ Plug 'onsails/lspkind-nvim'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'nvim-lua/lsp-status.nvim'
 Plug 'neovim/nvim-lspconfig'
+Plug 'tami5/lspsaga.nvim'
 
 " File search
 Plug 'nvim-lua/popup.nvim'
@@ -55,6 +58,9 @@ Plug 'glepnir/galaxyline.nvim' , {'branch': 'main'}
 " Comment lines
 Plug 'terrortylor/nvim-comment'
 
+" Markdown preview
+Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install'  }
+
 " Color Schemes
 Plug 'dracula/vim', { 'as': 'dracula' }
 Plug 'folke/tokyonight.nvim'
@@ -63,6 +69,17 @@ Plug 'romgrk/doom-one.vim'
 call plug#end()
 
 " TODO: move those lua scripts into separeted files
+lua << EOF
+  require'nvim-tree'.setup{
+   auto_close = true,
+   open_on_setup = true,
+   view = {
+     side = 'left',
+     auto_resize = true,
+   }
+  }
+EOF
+
 lua << EOF
 
 require('nvim_comment').setup({
@@ -385,7 +402,7 @@ require'compe'.setup {
   max_abbr_width = 100;
   max_kind_width = 100;
   max_menu_width = 100;
-  documentation = false;
+  documentation = true;
 
   source = {
     path = true;
@@ -396,10 +413,13 @@ require'compe'.setup {
     nvim_lua = true;
     spell = true;
     tags = true;
+    ultisnips = false;
     snippets_nvim = true;
     treesitter = true;
   };
 }
+
+require'lspsaga'.init_lsp_saga();
 
 vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
   underline = true,
@@ -411,6 +431,8 @@ vim.fn.sign_define('LspDiagnosticsSignError', { text = "" })
 vim.fn.sign_define('LspDiagnosticsSignWarning', { text = "" })
 vim.fn.sign_define('LspDiagnosticsSignInformation', { text = "" })
 vim.fn.sign_define('LspDiagnosticsSignHint', { text = "" })
+
+vim.cmd 'autocmd BufRead,BufNewFile *.eslintrc,*.prettierrc set filetype=json'
 
 local function eslint_config_exists()
   local eslintrc = vim.fn.glob(".eslintrc*", 0, 1)
@@ -451,14 +473,14 @@ lspconfig.tsserver.setup {
   filetypes = { "typescript", "typescriptreact", "typescript.tsx", "javascript", "javascriptreact", "javascript.jsx" },
   root_dir = function() return vim.loop.cwd() end,
   on_attach = function(client)
-    if client.config.flags then
       client.config.flags.allow_incremental_sync = true
+    if client.config.flags then
     end
     client.resolved_capabilities.document_formatting = false
     if not client == nil then
       set_lsp_config(client)
     end
-    vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
+    vim.cmd [[autocmd! CursorHold <buffer> lua require'lspsaga.diagnostic'.show_line_diagnostics()]]
   end
 }
 
@@ -473,7 +495,7 @@ lspconfig.efm.setup {
       set_lsp_config(client)
     end
     vim.cmd [[autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_seq_sync()]]
-    vim.cmd [[autocmd! CursorHold <buffer> lua vim.lsp.diagnostic.show_line_diagnostics({show_header = false})]]
+    vim.cmd [[autocmd! CursorHold <buffer> lua require'lspsaga.diagnostic'.show_line_diagnostics()]]
   end,
   root_dir = function() return vim.loop.cwd() end,
   settings = {
@@ -485,7 +507,11 @@ lspconfig.efm.setup {
       typescript = {eslint, prettier},
       ["typescript.tsx"] = {eslint, prettier},
       typescriptreact = {eslint, prettier},
+      markdown = {prettier},
+      ["markdown.md"] = {prettier},
+      json = {prettier},
       terraform = {terraform},
+      ["terraform.tf"] = {terraform},
     }
   },
   filetypes = {
@@ -495,6 +521,9 @@ lspconfig.efm.setup {
     "typescript",
     "typescript.tsx",
     "typescriptreact",
+    "json",
+    "markdown",
+    "markdown.md",
     "terraform",
     "terraform.tf",
   },
@@ -522,8 +551,11 @@ lua << EOF
 require'nvim-treesitter.configs'.setup {
   ensure_installed = "maintained", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
   highlight = {
-    enable = true,              -- false will disable the whole extension
+    enable = true,
   },
+  indent = {
+    enable = true 
+  } 
 }
 EOF
 set encoding=UTF-8
@@ -543,11 +575,9 @@ if executable('rls')
 endif
 
 " Nvim Tree
-let g:nvim_tree_auto_open = 1 "0 by default, opens the tree when typing `vim $DIR` or `vim`
 let g:nvim_tree_ignore = [ '.git', 'node_modules', '.cache' ] "empty by default
 let g:nvim_tree_gitignore = 1 "0 by default
-let g:nvim_tree_auto_open = 1 "0 by default, opens the tree when typing `vim $DIR` or `vim`
-let g:nvim_tree_auto_close = 1 "0 by default, closes the tree when it's the last window
+" let g:nvim_tree_auto_close = 1 "0 by default, closes the tree when it's the last window
 let g:nvim_tree_highlight_opened_files = 1
 let g:nvim_tree_icons = {
     \ 'default': '',
@@ -579,40 +609,62 @@ let g:nvim_tree_icons = {
     \   }
     \ }
 
-" " Copy to clipboard
+" Copy to clipboard
 vnoremap  <leader>y  "+y
 nnoremap  <leader>Y  "+yg_
 nnoremap  <leader>y  "+y
 nnoremap  <leader>yy  "+yy
 
-" " Paste from clipboard
+" Paste from clipboard
 nnoremap <leader>p "+p
 nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
 
-" Vim Tree
+" Nvim Tree
 nnoremap <C-b> :NvimTreeToggle<CR>
 
-" these "Ctrl mappings" work well when Caps Lock is mapped to Ctrl
-nmap <silent> t<C-n> :TestNearest<CR>
-nmap <silent> t<C-f> :TestFile<CR>
-nmap <silent> t<C-s> :TestSuite<CR>
-nmap <silent> t<C-l> :TestLast<CR>
-nmap <silent> t<C-g> :TestVisit<CR>
+" Markdown Preview
+nmap <C-A-p> <Plug>MarkdownPreview
+nmap <C-p-s> <Plug>MarkdownPreviewStop
+nmap <C-p> <Plug>MarkdownPreviewToggle
+
+" Remove search highlight
+nmap <silent> <C-h> :noh<CR>
+
+" LSP saga
+nnoremap <silent> a :Lspsaga diagnostic_jump_prev<CR>
+nnoremap <silent> s :Lspsaga diagnostic_jump_next<CR>  
+nnoremap <silent> <leader>d :Lspsaga preview_definition<CR>
+nnoremap <silent> <leader>r :Lspsaga rename<CR>
+nnoremap <silent> <leader>s :Lspsaga signature_help<CR>
+nnoremap <silent> <leader>i :Lspsaga hover_doc<CR>
+nnoremap <silent> <leader>k <cmd>lua require('lspsaga.action').smart_scroll_with_saga(1)<CR>
+nnoremap <silent> <leader>j <cmd>lua require('lspsaga.action').smart_scroll_with_saga(-1)<CR>
+nnoremap <silent> <leader>f :Lspsaga lsp_finder<CR>
+nnoremap <silent> <leader>a :Lspsaga code_action<CR>
+vnoremap <silent> <leader>a :<C-U>Lspsaga range_code_action<CR>
+
 " setup mapping to call :LazyGit
 nnoremap <silent> <C-g> :LazyGit<CR>
-nmap <silent> <C-a> ggVG<CR>
+
+" Telescope
 nnoremap <silent> <C-f> :Telescope find_files<CR>
 nnoremap <silent> <C-A-f> :Telescope live_grep<CR>
-vmap <C-/> <plug>NERDCommenterToggle <CR>
-nnoremap <silent><C-x> m`:silent +g/\m^\s*$/d<CR>``:noh<CR>
+
+" Get all file content
+nmap <silent> <C-a> ggVG<CR>
+
+" Create empty lines
 nnoremap <silent><C-S-down> :set paste<CR>m`o<Esc>``:set nopaste<CR>
 nnoremap <silent><C-S-up> :set paste<CR>m`O<Esc>``:set nopaste<CR>
+
+" Move lines up and down
 nmap <silent> <A-Up> :m-2  <CR>
 nmap <silent> <A-Down> :m+  <CR>
 vnoremap <A-down> :m '>+1<CR>gv=gv
 vnoremap <A-up> :m '<-2<CR>gv=gv
+" inoremap <silent><expr> <CR>  compe#confirm('<CR>')
 
 syntax enable
 filetype plugin on
@@ -620,12 +672,67 @@ filetype plugin indent on
 colorscheme dracula 
 set termguicolors
 
+function! s:_ (name, ...)
+  let fg = ''
+  let bg = ''
+  let attr = ''
+
+  if type(a:1) == 3
+    let fg   = get(a:1, 0, '')
+    let bg   = get(a:1, 1, '')
+    let attr = get(a:1, 2, '')
+  else
+    let fg   = get(a:000, 0, '')
+    let bg   = get(a:000, 1, '')
+    let attr = get(a:000, 2, '')
+  end
+
+  let has_props = v:false
+
+  let cmd = 'hi! ' . a:name
+  if !empty(fg) && fg != 'none'
+    let cmd .= ' guifg=' . fg
+    let has_props = v:true
+  end
+  if !empty(bg) && bg != 'none'
+    let cmd .= ' guibg=' . bg
+    let has_props = v:true
+  end
+  if !empty(attr) && attr != 'none'
+    let cmd .= ' gui=' . attr
+    let has_props = v:true
+  end
+  execute 'hi! clear ' a:name
+  if has_props
+    execute cmd
+  end
+endfunc
+
+let s:blue = '#8be9fd'
+let s:purple = '#bd93f9'
+let s:green = '#50fa7b'
+
+call s:_('DraculaCyan', s:blue, '', 'none')
+call s:_('DraculaPurple', s:purple, '', 'none')
+call s:_('DraculaGreen', s:green, '', 'none')
+
 highlight Normal guibg=none
 hi BufferTabpageFill guibg=none
+hi! link TSConstant DraculaPurple
+hi! link TSConstMacro DraculaPurple 
+hi! link TSConstBuiltin DraculaPurple
+hi! link TSLiteral DraculaPurple 
+hi! link TSFuncBuiltin DraculaGreen 
+hi! link TSLiteral DraculaPurple 
+
+augroup csshighlight 
+    au!
+    au BufNewFile,BufRead *.css,*.scss,*styles.ts,*style.ts hi! link TSProperty DraculaCyan 
+augroup end
 
 set number
 set tabstop=2
 set shiftwidth=2
-set autoindent
+set autoindent 
 set expandtab
-set updatetime=1000
+set updatetime=1000 
