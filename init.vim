@@ -34,6 +34,7 @@ Plug 'editorconfig/editorconfig-vim'
 Plug 'nvim-lua/lsp-status.nvim'
 Plug 'neovim/nvim-lspconfig'
 Plug 'tami5/lspsaga.nvim'
+Plug 'mhartington/formatter.nvim'
 
 " File search
 Plug 'nvim-lua/popup.nvim'
@@ -73,6 +74,8 @@ lua << EOF
   require'nvim-tree'.setup{
    auto_close = true,
    open_on_setup = true,
+   nvim_tree_ignore = {'.git', 'node_modules', '.cache'},
+   nvim_tree_gitignore = 1,
    view = {
      side = 'left',
      auto_resize = true,
@@ -434,40 +437,10 @@ vim.fn.sign_define('LspDiagnosticsSignHint', { text = "" })
 
 vim.cmd 'autocmd BufRead,BufNewFile *.eslintrc,*.prettierrc set filetype=json'
 
-local function eslint_config_exists()
-  local eslintrc = vim.fn.glob(".eslintrc*", 0, 1)
-  
-  if not vim.tbl_isempty(eslintrc) then
-    return true
-  end
-
-  if vim.fn.filereadable("package.json") then
-    if vim.fn.json_decode(vim.fn.readfile("package.json"))["eslintConfig"] then
-      return true
-    end
-  end
-
-  return false 
-end
-
-
-local eslint = {
-  lintCommand = "eslint_d -f unix --stdin --stdin-filename ${INPUT}",
-  lintStdin = true,
-  lintFormats = {"%f:%l:%c: %m"},
-  lintIgnoreExitCode = true,
-  formatCommand = "eslint_d --fix-to-stdout --stdin --stdin-filename=${INPUT}",
-  formatStdin = true
-}
-
-local prettier = {
-  formatCommand = "prettierd --stdin-filepath ${INPUT}",
-  formatStdin = true
-}
-
-local terraform = {
-  formatCommand = "terraform fmt -write=false -list=false ${INPUT}",
-}
+-- TODO: fix terraform format without using efm langserver
+-- local terraform = {
+--   formatCommand = "terraform fmt -write=false -list=false ${INPUT}",
+-- }
 
 lspconfig.tsserver.setup {
   filetypes = { "typescript", "typescriptreact", "typescript.tsx", "javascript", "javascriptreact", "javascript.jsx" },
@@ -475,58 +448,66 @@ lspconfig.tsserver.setup {
   on_attach = function(client)
       client.config.flags.allow_incremental_sync = true
     if client.config.flags then
-    end
-    client.resolved_capabilities.document_formatting = false
     if not client == nil then
-      set_lsp_config(client)
+       set_lsp_config(client)
+    end
+    client.resolved_capabilities.document_formatting = false  
     end
     vim.cmd [[autocmd! CursorHold <buffer> lua require'lspsaga.diagnostic'.show_line_diagnostics()]]
   end
 }
 
-lspconfig.efm.setup {
-  cmd = {"efm-langserver"},
-  init_options = {documentFormatting = true},
-  on_attach = function(client)
-    client.resolved_capabilities.document_formatting = true
-    client.resolved_capabilities.goto_definition = false
-    
-    if not client == nil then
-      set_lsp_config(client)
-    end
-    vim.cmd [[autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_seq_sync()]]
-    vim.cmd [[autocmd! CursorHold <buffer> lua require'lspsaga.diagnostic'.show_line_diagnostics()]]
-  end,
-  root_dir = function() return vim.loop.cwd() end,
+local prettier = function()
+  return {
+    exe = "prettier",
+    args = {"--stdin-filepath", vim.fn.fnameescape(vim.api.nvim_buf_get_name(0)), '--single-quote'},
+    stdin = true
+  }
+end
+
+--local eslint = function()
+--  return {
+--      exe = "eslint",
+--      args = {
+--      "--stdin-filename",
+--      vim.api.nvim_buf_get_name(0),
+--      "--fix",
+--      "--cache"
+--    },
+--    stdin = false 
+--  }
+--end
+
+require'formatter'.setup{
+  filetype = {
+    javascript = {
+      -- prettier
+      prettier,
+    },
+    javascriptreact = {
+      -- prettier
+      prettier,
+    },
+    typescript = {
+      -- prettier
+      prettier,
+    },
+    typescriptreact = {
+      -- prettier
+      prettier,
+    },
+  }
+}
+
+  
+
+require'lspconfig'.eslint.setup{
   settings = {
-    rootMarkers = {vim.loop.cwd()},
-    languages = {
-      javascript = {eslint, prettier},
-      javascriptreact = {eslint, prettier},
-      ["javascript.jsx"] = {eslint, prettier},
-      typescript = {eslint, prettier},
-      ["typescript.tsx"] = {eslint, prettier},
-      typescriptreact = {eslint, prettier},
-      markdown = {prettier},
-      ["markdown.md"] = {prettier},
-      json = {prettier},
-      terraform = {terraform},
-      ["terraform.tf"] = {terraform},
-    }
-  },
-  filetypes = {
-    "javascript",
-    "javascriptreact",
-    "javascript.jsx",
-    "typescript",
-    "typescript.tsx",
-    "typescriptreact",
-    "json",
-    "markdown",
-    "markdown.md",
-    "terraform",
-    "terraform.tf",
-  },
+    codeActionOnSave = {
+      enable = true,
+      mode = "all"
+    },
+  }
 }
 
 lspconfig.terraformls.setup {}
@@ -574,9 +555,6 @@ if executable('rls')
         \ })
 endif
 
-" Nvim Tree
-let g:nvim_tree_ignore = [ '.git', 'node_modules', '.cache' ] "empty by default
-let g:nvim_tree_gitignore = 1 "0 by default
 " let g:nvim_tree_auto_close = 1 "0 by default, closes the tree when it's the last window
 let g:nvim_tree_highlight_opened_files = 1
 let g:nvim_tree_icons = {
@@ -644,6 +622,11 @@ nnoremap <silent> <leader>j <cmd>lua require('lspsaga.action').smart_scroll_with
 nnoremap <silent> <leader>f :Lspsaga lsp_finder<CR>
 nnoremap <silent> <leader>a :Lspsaga code_action<CR>
 vnoremap <silent> <leader>a :<C-U>Lspsaga range_code_action<CR>
+
+augroup FormatAutogroup
+  autocmd!
+  autocmd BufWritePost *.js,*.jsx,*.ts,*.tsx,*.lua FormatWrite
+augroup END
 
 " setup mapping to call :LazyGit
 nnoremap <silent> <C-g> :LazyGit<CR>
@@ -735,4 +718,4 @@ set tabstop=2
 set shiftwidth=2
 set autoindent 
 set expandtab
-set updatetime=1000 
+set updatetime=1000
