@@ -9,6 +9,7 @@ Plug 'karb94/neoscroll.nvim'
 
 " Fancy syntax
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'milch/vim-fastlane'
 
 " Javascript/Typescript/JSX Syntax
 Plug 'styled-components/vim-styled-components'
@@ -356,7 +357,6 @@ require"lspkind".init({
     -- enables text annotations
     --
     -- default: true
-    with_text = true,
 
     -- default symbol map
     -- can be either 'default' or
