@@ -14,9 +14,6 @@ Plug 'milch/vim-fastlane'
 " Javascript/Typescript/JSX Syntax
 Plug 'styled-components/vim-styled-components'
 
-" ReasonML Syntax
-Plug 'jordwalke/vim-reasonml'
-
 " Error Handling
 Plug 'scrooloose/syntastic'
 
@@ -27,7 +24,11 @@ Plug 'kyazdani42/nvim-web-devicons'
 " Plug 'romgrk/barbar.nvim'
 
 " Code completion
-Plug 'hrsh7th/nvim-compe'
+Plug 'hrsh7th/cmp-nvim-lsp'
+Plug 'hrsh7th/cmp-buffer'
+Plug 'hrsh7th/cmp-path'
+Plug 'hrsh7th/cmp-cmdline'
+Plug 'hrsh7th/nvim-cmp'
 Plug 'onsails/lspkind-nvim'
 
 " LSP and code formatters
@@ -73,14 +74,10 @@ call plug#end()
 " TODO: move those lua scripts into separeted files
 lua << EOF
   require'nvim-tree'.setup{
-   auto_close = true,
-   open_on_setup = true,
-   nvim_tree_ignore = {'.git', 'node_modules', '.cache'},
-   nvim_tree_gitignore = 1,
-   view = {
-     side = 'left',
-     auto_resize = true,
-   }
+    view = {
+      side = 'left',
+      adaptive_size = true,
+    },
   }
 EOF
 
@@ -393,34 +390,67 @@ require"lspkind".init({
 })
 
 
-require'compe'.setup {
-  enabled = true;
-  autocomplete = true;
-  debug = false;
-  min_length = 1;
-  preselect = 'enable';
-  throttle_time = 80;
-  source_timeout = 200;
-  incomplete_delay = 400;
-  max_abbr_width = 100;
-  max_kind_width = 100;
-  max_menu_width = 100;
-  documentation = true;
+local cmp = require'cmp'
+local lspkind = require('lspkind')
 
-  source = {
-    path = true;
-    buffer = true;
-    calc = true;
-    vsnip = true;
-    nvim_lsp = true;
-    nvim_lua = true;
-    spell = true;
-    tags = true;
-    ultisnips = false;
-    snippets_nvim = true;
-    treesitter = true;
-  };
-}
+cmp.setup({
+    snippet = {
+      -- REQUIRED - you must specify a snippet engine
+      expand = function(args)
+        vim.fn["vsnip#anonymous"](args.body) -- For `vsnip` users.
+        -- require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
+        -- require('snippy').expand_snippet(args.body) -- For `snippy` users.
+        -- vim.fn["UltiSnips#Anon"](args.body) -- For `ultisnips` users.
+      end,
+    },
+    window = {
+      -- completion = cmp.config.window.bordered(),
+      -- documentation = cmp.config.window.bordered(),
+    },
+    mapping = cmp.mapping.preset.insert({
+      ['<C-b>'] = cmp.mapping.scroll_docs(-4),
+      ['<C-f>'] = cmp.mapping.scroll_docs(4),
+      ['<C-Space>'] = cmp.mapping.complete(),
+      ['<C-e>'] = cmp.mapping.abort(),
+      ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
+    }),
+    sources = cmp.config.sources({
+      { name = 'nvim_lsp' },
+      { name = 'vsnip' }, -- For vsnip users.
+      -- { name = 'luasnip' }, -- For luasnip users.
+      -- { name = 'ultisnips' }, -- For ultisnips users.
+      -- { name = 'snippy' }, -- For snippy users.
+    }, {
+      { name = 'buffer' },
+    })
+  })
+
+  -- Set configuration for specific filetype.
+  cmp.setup.filetype('gitcommit', {
+    sources = cmp.config.sources({
+      { name = 'cmp_git' }, -- You can specify the `cmp_git` source if you were installed it.
+    }, {
+      { name = 'buffer' },
+    })
+  })
+
+  -- Use buffer source for `/` (if you enabled `native_menu`, this won't work anymore).
+  cmp.setup.cmdline('/', {
+    mapping = cmp.mapping.preset.cmdline(),
+    sources = {
+      { name = 'buffer' }
+    }
+  })
+
+  -- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
+  cmp.setup.cmdline(':', {
+    mapping = cmp.mapping.preset.cmdline(),
+    sources = cmp.config.sources({
+      { name = 'path' }
+    }, {
+      { name = 'cmdline' }
+    })
+  })
 
 require'lspsaga'.init_lsp_saga();
 
@@ -451,7 +481,7 @@ lspconfig.tsserver.setup {
     if not client == nil then
        set_lsp_config(client)
     end
-    client.resolved_capabilities.document_formatting = false  
+    client.server_capabilities.document_formatting = false  
     end
     vim.cmd [[autocmd! CursorHold <buffer> lua require'lspsaga.diagnostic'.show_line_diagnostics()]]
   end
@@ -510,6 +540,14 @@ require'lspconfig'.eslint.setup{
   }
 }
 
+local capabilities = require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities())
+
+require'lspconfig'.cssls.setup {
+  capabilities = capabilities,
+}
+
+lspconfig.graphql.setup {}
+
 lspconfig.terraformls.setup {}
 
 EOF
@@ -530,9 +568,21 @@ hi LspDiagnosticsUnderlineHint guifg=NONE ctermfg=NONE cterm=underline gui=under
 
 lua << EOF
 require'nvim-treesitter.configs'.setup {
-  ensure_installed = "maintained", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
+  ensure_installed = {
+    "typescript", 
+    "tsx",
+    "javascript", 
+    "css", 
+    "scss", 
+    "lua", 
+    "json", 
+    "java", 
+    "ruby", 
+    "toml",
+  },
   highlight = {
     enable = true,
+    additional_vim_regex_highlighting = false,
   },
   indent = {
     enable = true 
@@ -694,10 +744,12 @@ endfunc
 let s:blue = '#8be9fd'
 let s:purple = '#bd93f9'
 let s:green = '#50fa7b'
+let s:white = '#f8f8f2'
 
 call s:_('DraculaCyan', s:blue, '', 'none')
 call s:_('DraculaPurple', s:purple, '', 'none')
 call s:_('DraculaGreen', s:green, '', 'none')
+call s:_('DraculaWhite', s:white, '', 'none')
 
 highlight Normal guibg=none
 hi BufferTabpageFill guibg=none
@@ -707,6 +759,11 @@ hi! link TSConstBuiltin DraculaPurple
 hi! link TSLiteral DraculaPurple 
 hi! link TSFuncBuiltin DraculaGreen 
 hi! link TSLiteral DraculaPurple 
+
+hi! link NvimTreeExecFile DraculaWhite
+hi! link NvimTreeOpenedFile DraculaWhite
+hi! link NvimTreeSpecialFile DraculaWhite
+hi! link NvimTreeImageFile DraculaWhite
 
 augroup csshighlight 
     au!
