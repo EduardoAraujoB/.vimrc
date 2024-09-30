@@ -35,7 +35,7 @@ Plug 'onsails/lspkind-nvim'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'nvim-lua/lsp-status.nvim'
 Plug 'neovim/nvim-lspconfig'
-Plug 'tami5/lspsaga.nvim'
+Plug 'nvimdev/lspsaga.nvim'
 Plug 'mhartington/formatter.nvim'
 
 " File search
@@ -452,7 +452,7 @@ cmp.setup({
     })
   })
 
-require'lspsaga'.init_lsp_saga();
+require'lspsaga'.setup();
 
 vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
   underline = true,
@@ -472,18 +472,31 @@ vim.cmd 'autocmd BufRead,BufNewFile *.eslintrc,*.prettierrc set filetype=json'
 --   formatCommand = "terraform fmt -write=false -list=false ${INPUT}",
 -- }
 
-lspconfig.tsserver.setup {
+lspconfig.ts_ls.setup {
   filetypes = { "typescript", "typescriptreact", "typescript.tsx", "javascript", "javascriptreact", "javascript.jsx" },
   root_dir = function() return vim.loop.cwd() end,
   on_attach = function(client)
-      client.config.flags.allow_incremental_sync = true
     if client.config.flags then
+      client.config.flags.allow_incremental_sync = true
     if not client == nil then
        set_lsp_config(client)
     end
     client.server_capabilities.document_formatting = false  
     end
-    vim.cmd [[autocmd! CursorHold <buffer> lua require'lspsaga.diagnostic'.show_line_diagnostics()]]
+    vim.api.nvim_create_autocmd("CursorHold", {
+  buffer = bufnr,
+  callback = function()
+    local opts = {
+      focusable = false,
+      close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
+      border = 'rounded',
+      source = 'always',
+      prefix = ' ',
+      scope = 'cursor',
+    }
+    vim.diagnostic.open_float(nil, opts)
+  end
+})
   end
 }
 
@@ -495,35 +508,39 @@ local prettier = function()
   }
 end
 
---local eslint = function()
---  return {
---      exe = "eslint",
---      args = {
---      "--stdin-filename",
---      vim.api.nvim_buf_get_name(0),
---      "--fix",
---      "--cache"
---    },
---    stdin = false 
---  }
---end
+local eslint = function()
+  return {
+      exe = "./node_modules/eslint/bin/eslint.js",
+      args = {
+      "--stdin-filename",
+      vim.api.nvim_buf_get_name(0),
+      "--fix",
+      "--cache"
+    },
+    stdin = false 
+  }
+end
 
 require'formatter'.setup{
   filetype = {
     javascript = {
       -- prettier
+      eslint,
       prettier,
     },
     javascriptreact = {
       -- prettier
+      eslint,
       prettier,
     },
     typescript = {
       -- prettier
+      eslint,
       prettier,
     },
     typescriptreact = {
       -- prettier
+      eslint,
       prettier,
     },
   }
