@@ -503,7 +503,7 @@ lspconfig.ts_ls.setup {
 local prettier = function()
   return {
     exe = "prettier",
-    args = {"--stdin-filepath", vim.fn.fnameescape(vim.api.nvim_buf_get_name(0)), '--single-quote'},
+    args = {"--stdin-filepath", vim.fn.fnameescape(vim.api.nvim_buf_get_name(0))},
     stdin = true
   }
 end
@@ -701,6 +701,7 @@ nnoremap <silent> <C-g> :LazyGit<CR>
 " Telescope
 nnoremap <silent> <C-f> :Telescope find_files<CR>
 nnoremap <silent> <C-A-f> :Telescope live_grep<CR>
+nnoremap <silent> <C-M-f> :Telescope live_grep<CR>
 
 " Get all file content
 nmap <silent> <C-a> ggVG<CR>
@@ -711,9 +712,13 @@ nnoremap <silent><C-S-up> :set paste<CR>m`O<Esc>``:set nopaste<CR>
 
 " Move lines up and down
 nmap <silent> <A-Up> :m-2  <CR>
+nmap <silent> <M-Up> :m-2  <CR>
 nmap <silent> <A-Down> :m+  <CR>
+nmap <silent> <M-Down> :m+  <CR>
 vnoremap <A-down> :m '>+1<CR>gv=gv
+vnoremap <M-down> :m '>+1<CR>gv=gv
 vnoremap <A-up> :m '<-2<CR>gv=gv
+vnoremap <M-up> :m '<-2<CR>gv=gv
 " inoremap <silent><expr> <CR>  compe#confirm('<CR>')
 
 syntax enable
